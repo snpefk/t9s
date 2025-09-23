@@ -1,20 +1,28 @@
+use super::Component;
+use crate::teamcity::types::BuildType;
+use crate::{action::Action, config::Config};
+use color_eyre::owo_colors::OwoColorize;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect, Size};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, Row, Table, TableState};
 use tokio::sync::mpsc::UnboundedSender;
-use super::Component;
-use crate::{action::Action, config::Config};
-use crate::teamcity::types::BuildType;
 
-pub struct Projects<'a> {
-    build_configs: &'a Vec<BuildType>,
-    table_state: TableState
+#[derive(Default)]
+pub struct Projects {
+    build_configs: Vec<BuildType>,
+    table_state: TableState,
+    // buffer to hold KeyEvents for multi-key combinations
+    last_events: Vec<KeyEvent>,
 }
 
 impl Projects {
-    pub fn new() -> Self {
-
+    pub fn new(build_configs: Vec<BuildType>) -> Self {
+        Self {
+            build_configs,
+            ..Self::default()
+        }
     }
 
     fn move_down(&mut self) {
@@ -29,6 +37,14 @@ impl Projects {
             None => 0,
         };
         self.table_state.select(Some(i));
+    }
+
+    fn move_end(&mut self) {
+        (self.table_state.select_last())
+    }
+
+    fn move_begin(&mut self) {
+        (self.table_state.select_first())
     }
 
     fn move_up(&mut self) {
@@ -69,7 +85,6 @@ impl Projects {
             }
         }
     }
-
 }
 
 impl Component for Projects {
@@ -79,6 +94,49 @@ impl Component for Projects {
 
     fn register_config_handler(&mut self, config: Config) -> color_eyre::Result<()> {
         Ok(())
+    }
+
+    fn handle_key_event(&mut self, key: KeyEvent) -> color_eyre::Result<Option<Action>> {
+        self.last_events.push(key);
+
+        let action = match key.code {
+            KeyCode::Char('G') => {
+                if key.modifiers == KeyModifiers::SHIFT {
+                    self.move_end()
+                }
+                Action::Render
+            }
+            KeyCode::Char('g') => {
+                if let Some(previous_key) = self.last_events.iter().rev().nth(1) {
+                    if previous_key.code == KeyCode::Char('g') {
+                        self.move_begin();
+                        self.last_events.clear()
+                    }
+                }
+                Action::Render
+            }
+            KeyCode::Char('j') => {
+                self.move_down();
+                Action::Render
+            }
+            KeyCode::Char('k') => {
+                self.move_up();
+                Action::Render
+            }
+            KeyCode::Char('f') => {
+                let build_types: Vec<String> = self
+                    .build_configs
+                    .iter()
+                    .map(|build_type: &BuildType| {
+                        format!("{name} ({id})", name = build_type.name, id = build_type.id)
+                    })
+                    .collect();
+
+                Action::Fzf(build_types)
+            }
+            _ => Action::Render,
+        };
+        Ok(Some(action))
     }
 
     fn init(&mut self, area: Size) -> color_eyre::Result<()> {
