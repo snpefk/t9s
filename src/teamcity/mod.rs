@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub mod types;
 use types::{BuildType, BuildTypes};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct PersistentCacheEntry<T> {
     data: T,
     timestamp: u64,
@@ -39,7 +39,7 @@ impl<T> PersistentCacheEntry<T> {
     }
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 struct PersistentCache {
     entries: HashMap<String, PersistentCacheEntry<Vec<BuildType>>>,
 }
@@ -78,12 +78,13 @@ impl TeamCityClient {
             app_cache_dir.join("build_configs_cache.json")
         } else {
             // Fallback to current directory
-            // TODO: better fallback
+            // TODO:write better fallback
             PathBuf::from("teamcity_cache.json")
         }
     }
 
     async fn load_cache(&self) -> PersistentCache {
+        println!("Loading cache from {}", self.cache_file.display());
         match async_fs::read_to_string(&self.cache_file).await {
             Ok(content) => {
                 match serde_json::from_str::<PersistentCache>(&content) {
@@ -94,6 +95,8 @@ impl TeamCityClient {
                                 cleaned_cache.entries.insert(key, entry);
                             }
                         }
+                        println!("Cache contains {} entries", cleaned_cache.entries.len());
+                        println!("Cache content: {:?}", &cleaned_cache.entries);
                         cleaned_cache
                     }
                     Err(_) => PersistentCache::default(),
@@ -162,6 +165,7 @@ impl TeamCityClient {
 
         if let Some(entry) = cache.entries.get(&cache_key) {
             if !entry.is_expired() {
+                println!("Using cached build configurations for project {}", project_id);
                 return Ok(entry.data.clone());
             }
         }
