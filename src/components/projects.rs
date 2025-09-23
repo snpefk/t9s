@@ -90,7 +90,8 @@ impl Projects {
     fn select_project(&mut self, selected_string: String) -> color_eyre::Result<()> {
         if let Some((i, _selected_type)) =
             self.build_types.iter().enumerate().find(|(_, build_type)| {
-                let search_string = format!("{name} ({id})", name = build_type.name, id = build_type.id);
+                let search_string =
+                    format!("{name} ({id})", name = build_type.name, id = build_type.id);
                 search_string == selected_string
             })
         {
@@ -191,29 +192,34 @@ impl Component for Projects {
             .height(1)
             .bottom_margin(1);
 
+        let footer = if let Some(selected) = self.table_state.selected() {
+            let selected_project = self.build_types[selected].clone();
+            Some(
+                Row::new(vec![format!(
+                    "Root project: {}",
+                    selected_project
+                        .project_name
+                        .unwrap_or_else(|| "N/A".to_string())
+                )])
+                .style(
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .height(1)
+                .top_margin(1),
+            )
+        } else {
+            None
+        };
+
         let rows: Vec<Row> = self
             .build_types
             .iter()
-            .map(|config| {
-                Row::new(vec![
-                    config
-                        .project_name
-                        .clone()
-                        .unwrap_or_else(|| "N/A".to_string()),
-                    config.name.clone(),
-                    config.id.clone(),
-                ])
-            })
+            .map(|config| Row::new(vec![config.name.clone(), config.id.clone()]))
             .collect();
 
-        let table = Table::new(
-            rows,
-            &[
-                Constraint::Max(30),
-                Constraint::Min(70),
-                Constraint::Max(30),
-            ],
-        )
+        let table = Table::new(rows, &[Constraint::Min(70), Constraint::Max(30)])
             .header(header)
             .block(
                 Block::default()
@@ -223,6 +229,12 @@ impl Component for Projects {
             .column_spacing(1)
             .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
             .highlight_symbol(">> ");
+
+        let table = if let Some(footer) = footer {
+            table.footer(footer)
+        } else {
+            table
+        };
 
         frame.render_stateful_widget(table, area, &mut self.table_state);
         Ok(())
