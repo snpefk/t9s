@@ -166,11 +166,6 @@ impl TeamCityClient {
             }
         }
 
-        let url = format!(
-            "{}/app/rest/buildTypes?locator=affectedProject:(id:{})",
-            self.base_url, project_id
-        );
-
         let result = self.fetch_build_configurations_by_project(project_id).await?;
 
         cache.entries.insert(
