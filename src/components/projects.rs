@@ -162,15 +162,23 @@ impl Component for Projects {
 
     fn draw(&mut self, frame: &mut Frame, area: Rect) -> color_eyre::Result<()> {
         let header = Row::new(vec!["Project", "Name", "ID"])
-            .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+            .style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )
             .height(1)
             .bottom_margin(1);
 
-        let rows: Vec<Row> = self.build_configs
+        let rows: Vec<Row> = self
+            .build_configs
             .iter()
             .map(|config| {
                 Row::new(vec![
-                    config.project_name.clone().unwrap_or_else(|| "N/A".to_string()),
+                    config
+                        .project_name
+                        .clone()
+                        .unwrap_or_else(|| "N/A".to_string()),
                     config.name.clone(),
                     config.id.clone(),
                 ])
@@ -183,16 +191,17 @@ impl Component for Projects {
                 Constraint::Max(30),
                 Constraint::Min(70),
                 Constraint::Max(30),
-            ])
-            .header(header)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Build Configurations")
-            )
-            .column_spacing(1)
-            .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
-            .highlight_symbol(">> ");
+            ],
+        )
+        .header(header)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Build Configurations"),
+        )
+        .column_spacing(1)
+        .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+        .highlight_symbol(">> ");
 
         frame.render_stateful_widget(table, area, &mut self.table_state);
         Ok(())
