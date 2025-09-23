@@ -183,7 +183,7 @@ impl Component for Projects {
     }
 
     fn draw(&mut self, frame: &mut Frame, area: Rect) -> color_eyre::Result<()> {
-        let header = Row::new(vec!["Project", "Name", "ID"])
+        let header = Row::new(vec!["Name", "ID"])
             .style(
                 Style::default()
                     .fg(Color::Yellow)
