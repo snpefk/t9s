@@ -9,6 +9,8 @@ pub enum Action {
     Suspend,
     Resume,
     Quit,
+    Fzf(Vec<String>),
+    FzfSelected(String),
     ClearScreen,
     Error(String),
     Help,

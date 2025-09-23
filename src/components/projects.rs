@@ -11,16 +11,17 @@ use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Default)]
 pub struct Projects {
-    build_configs: Vec<BuildType>,
+    build_types: Vec<BuildType>,
     table_state: TableState,
     // buffer to hold KeyEvents for multi-key combinations
     last_events: Vec<KeyEvent>,
+    pub action_tx: Option<UnboundedSender<Action>>,
 }
 
 impl Projects {
     pub fn new(build_configs: Vec<BuildType>) -> Self {
         Self {
-            build_configs,
+            build_types: build_configs,
             ..Self::default()
         }
     }
@@ -28,7 +29,7 @@ impl Projects {
     fn move_down(&mut self) {
         let i = match self.table_state.selected() {
             Some(i) => {
-                if i >= self.build_configs.len() - 1 {
+                if i >= self.build_types.len() - 1 {
                     0
                 } else {
                     i + 1
@@ -51,7 +52,7 @@ impl Projects {
         let i = match self.table_state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.build_configs.len() - 1
+                    self.build_types.len() - 1
                 } else {
                     i - 1
                 }
@@ -63,7 +64,7 @@ impl Projects {
 
     fn open_selected_url(&mut self) {
         if let Some(selected_index) = self.table_state.selected() {
-            if let Some(config) = self.build_configs.get(selected_index) {
+            if let Some(config) = self.build_types.get(selected_index) {
                 if let Some(web_url) = &config.web_url {
                     match open::that(web_url) {
                         Ok(_) => {
@@ -85,14 +86,35 @@ impl Projects {
             }
         }
     }
+
+    fn select_project(&mut self, selected_string: String) -> color_eyre::Result<()> {
+        if let Some((i, _selected_type)) =
+            self.build_types.iter().enumerate().find(|(_, build_type)| {
+                let search_string = format!("{name} ({id})", name = build_type.name, id = build_type.id);
+                search_string == selected_string
+            })
+        {
+            self.table_state.select(Some(i));
+        }
+        Ok(())
+    }
 }
 
 impl Component for Projects {
     fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> color_eyre::Result<()> {
+        self.action_tx = Some(tx);
         Ok(())
     }
 
     fn register_config_handler(&mut self, config: Config) -> color_eyre::Result<()> {
+        Ok(())
+    }
+
+    fn init(&mut self, _area: Size) -> color_eyre::Result<()> {
+        if !self.build_types.is_empty() {
+            self.table_state.select(Some(0));
+        }
+
         Ok(())
     }
 
@@ -125,7 +147,7 @@ impl Component for Projects {
             }
             KeyCode::Char('f') => {
                 let build_types: Vec<String> = self
-                    .build_configs
+                    .build_types
                     .iter()
                     .map(|build_type: &BuildType| {
                         format!("{name} ({id})", name = build_type.name, id = build_type.id)
@@ -133,7 +155,7 @@ impl Component for Projects {
                     .collect();
 
                 Action::Fzf(build_types)
-            },
+            }
             KeyCode::Char('o') => {
                 self.open_selected_url();
                 Action::Render
@@ -143,14 +165,6 @@ impl Component for Projects {
         Ok(Some(action))
     }
 
-    fn init(&mut self, area: Size) -> color_eyre::Result<()> {
-        if !self.build_configs.is_empty() {
-            self.table_state.select(Some(0));
-        }
-
-        Ok(())
-    }
-
     fn update(&mut self, action: Action) -> color_eyre::Result<Option<Action>> {
         match action {
             Action::Tick => {
@@ -158,6 +172,9 @@ impl Component for Projects {
             }
             Action::Render => {
                 // add any logic here that should run on every render
+            }
+            Action::FzfSelected(selected_string) => {
+                self.select_project(selected_string)?;
             }
             _ => {}
         }
@@ -175,7 +192,7 @@ impl Component for Projects {
             .bottom_margin(1);
 
         let rows: Vec<Row> = self
-            .build_configs
+            .build_types
             .iter()
             .map(|config| {
                 Row::new(vec![
@@ -197,15 +214,15 @@ impl Component for Projects {
                 Constraint::Max(30),
             ],
         )
-        .header(header)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Build Configurations"),
-        )
-        .column_spacing(1)
-        .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
-        .highlight_symbol(">> ");
+            .header(header)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Build Configurations"),
+            )
+            .column_spacing(1)
+            .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+            .highlight_symbol(">> ");
 
         frame.render_stateful_widget(table, area, &mut self.table_state);
         Ok(())

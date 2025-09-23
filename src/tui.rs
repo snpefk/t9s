@@ -1,11 +1,5 @@
 #![allow(dead_code)] // Remove this once you start using the code
 
-use std::{
-    io::{Stdout, stdout},
-    ops::{Deref, DerefMut},
-    time::Duration,
-};
-
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -113,9 +107,8 @@ impl Tui {
         });
     }
 
-    pub fn run_fzf(&mut self, options: Vec<String>) -> Result<String> {
-        stdout().execute(LeaveAlternateScreen)?;
-        disable_raw_mode()?;
+    pub fn run_fzf(&mut self, options: &Vec<String>) -> Result<String> {
+        self.exit()?;
 
         let mut child = Command::new("fzf")
             .stdin(Stdio::piped())
@@ -138,9 +131,8 @@ impl Tui {
             ))
         };
 
-        stdout().execute(EnterAlternateScreen)?;
-        enable_raw_mode()?;
         self.terminal.clear()?;
+        self.enter()?;
 
         selected_line
     }

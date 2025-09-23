@@ -5,17 +5,16 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{debug, info};
 
+use crate::components::projects::Projects;
+use crate::teamcity::types::{BuildType, BuildTypes};
 use crate::{
     action::Action,
     components::{Component, fps::FpsCounter, home::Home},
     config::Config,
     tui::{Event, Tui},
 };
-use crate::components::projects::Projects;
-use crate::teamcity::types::{BuildType, BuildTypes};
 
 pub struct App {
-    build_configs: Vec<BuildType>,
     config: Config,
     components: Vec<Box<dyn Component>>,
     should_quit: bool,
@@ -33,11 +32,10 @@ pub enum Mode {
 }
 
 impl App {
-    pub fn new(build_configs: Vec<BuildType>) -> Result<Self> {
+    pub fn new(build_types: Vec<BuildType>) -> Result<Self> {
         let (action_tx, action_rx) = mpsc::unbounded_channel();
         Ok(Self {
-            build_configs,
-            components: vec![Box::new(Projects::new(&build_configs))],
+            components: vec![Box::new(Projects::new(build_types))],
             should_quit: false,
             should_suspend: false,
             config: Config::new()?,
@@ -145,6 +143,11 @@ impl App {
                 Action::ClearScreen => tui.terminal.clear()?,
                 Action::Resize(w, h) => self.handle_resize(tui, w, h)?,
                 Action::Render => self.render(tui)?,
+                Action::Fzf(ref options) => {
+                    let selected_string = tui.run_fzf(&options)?;
+                    self.action_tx.send(Action::FzfSelected(selected_string))?;
+                    ()
+                }
                 _ => {}
             }
             for component in self.components.iter_mut() {
