@@ -7,8 +7,10 @@ use std::{
 };
 
 use color_eyre::Result;
+use color_eyre::eyre::eyre;
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use crossterm::{
-    cursor,
+    ExecutableCommand, cursor,
     event::{
         DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
         Event as CrosstermEvent, EventStream, KeyEvent, KeyEventKind, MouseEvent,
@@ -18,6 +20,13 @@ use crossterm::{
 use futures::{FutureExt, StreamExt};
 use ratatui::backend::CrosstermBackend as Backend;
 use serde::{Deserialize, Serialize};
+use std::io::{Stdin, Write};
+use std::process::{Command, Stdio};
+use std::{
+    io::{Stdout, stdout},
+    ops::{Deref, DerefMut},
+    time::Duration,
+};
 use tokio::{
     sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
@@ -102,6 +111,38 @@ impl Tui {
         self.task = tokio::spawn(async {
             event_loop.await;
         });
+    }
+
+    pub fn run_fzf(&mut self, options: Vec<String>) -> Result<String> {
+        stdout().execute(LeaveAlternateScreen)?;
+        disable_raw_mode()?;
+
+        let mut child = Command::new("fzf")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()?; // run fzf
+
+        if let Some(stdin) = child.stdin.as_mut() {
+            let fzf_stdin = options.join("\n");
+            stdin.write(fzf_stdin.as_bytes())?;
+        }
+
+        // Collect fzf's output
+        let output = child.wait_with_output()?;
+        let selected_line = if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            Err(eyre!(
+                "fzf failed with status code {}",
+                output.status.code().unwrap()
+            ))
+        };
+
+        stdout().execute(EnterAlternateScreen)?;
+        enable_raw_mode()?;
+        self.terminal.clear()?;
+
+        selected_line
     }
 
     async fn event_loop(
