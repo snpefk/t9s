@@ -133,6 +133,10 @@ impl Component for Projects {
                     .collect();
 
                 Action::Fzf(build_types)
+            },
+            KeyCode::Char('o') => {
+                self.open_selected_url();
+                Action::Render
             }
             _ => Action::Render,
         };
