@@ -41,7 +41,8 @@ impl Projects {
     }
 
     fn move_end(&mut self) {
-        (self.table_state.select_last())
+        let n = self.build_types.len() - 1;
+        self.table_state.select(Some(n))
     }
 
     fn move_begin(&mut self) {
