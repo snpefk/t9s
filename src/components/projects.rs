@@ -46,7 +46,7 @@ impl Projects {
     }
 
     fn move_begin(&mut self) {
-        (self.table_state.select_first())
+        self.table_state.select_first()
     }
 
     fn move_up(&mut self) {
@@ -125,9 +125,7 @@ impl Component for Projects {
 
         let action = match key.code {
             KeyCode::Char('G') => {
-                if key.modifiers == KeyModifiers::SHIFT {
-                    self.move_end()
-                }
+                self.move_end();
                 Action::Render
             }
             KeyCode::Char('g') => {
