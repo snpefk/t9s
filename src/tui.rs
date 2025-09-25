@@ -1,11 +1,9 @@
 #![allow(dead_code)] // Remove this once you start using the code
 
-use color_eyre::Result;
 use color_eyre::eyre::eyre;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use color_eyre::Result;
 use crossterm::{
-    ExecutableCommand, cursor,
-    event::{
+    cursor, event::{
         DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
         Event as CrosstermEvent, EventStream, KeyEvent, KeyEventKind, MouseEvent,
     },
@@ -14,10 +12,9 @@ use crossterm::{
 use futures::{FutureExt, StreamExt};
 use ratatui::backend::CrosstermBackend as Backend;
 use serde::{Deserialize, Serialize};
-use std::io::{Stdin, Write};
 use std::process::{Command, Stdio};
 use std::{
-    io::{Stdout, stdout},
+    io::{stdout, Stdout, Write},
     ops::{Deref, DerefMut},
     time::Duration,
 };
