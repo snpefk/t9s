@@ -3,7 +3,7 @@ use crate::teamcity::types::BuildType;
 use crate::{action::Action, config::Config};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Layout, Rect, Size};
+use ratatui::layout::{Constraint, Rect, Size};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Row, Table, TableState, Wrap};
 use tokio::sync::mpsc::UnboundedSender;
@@ -50,8 +50,8 @@ impl Projects {
             .collect()
     }
 
-    fn filter_build_types(&mut self, filter_string: &String) {
-        self.filter_string = Some(filter_string.to_string().to_lowercase());
+    fn filter_build_types(&mut self, filter_string: Option<&String>) {
+        self.filter_string = filter_string.map(|s| s.to_lowercase());
     }
 
     fn move_down(&mut self) {
@@ -250,7 +250,11 @@ impl Component for Projects {
                 }
                 KeyCode::Enter => {
                     let buffer_clone = self.input_buffer.clone();
-                    self.filter_build_types(&buffer_clone);
+                    if buffer_clone.is_empty() {
+                        self.filter_build_types(None);
+                    } else {
+                        self.filter_build_types(Some(&buffer_clone));
+                    }
                     self.input_buffer.clear();
                     self.input_mode = InputMode::Normal;
                     Action::Render
@@ -278,14 +282,24 @@ impl Component for Projects {
     }
 
     fn draw(&mut self, frame: &mut Frame, area: Rect) -> color_eyre::Result<()> {
-        let header = Row::new(vec!["Name", "ID"])
-            .style(
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            )
-            .height(1)
-            .bottom_margin(1);
+        let header = Row::new(vec![
+            format!(
+                "Name {}",
+                if let Some(filter_string) = self.filter_string.as_ref() {
+                    format!("({})", filter_string)
+                } else {
+                    String::from("")
+                }
+            ),
+            "ID".to_string(),
+        ])
+        .style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )
+        .height(1)
+        .bottom_margin(1);
 
         let footer = if let Some(selected) = self.table_state.selected() {
             if let Some(selected_project) = self.get_build_types().get(selected) {
