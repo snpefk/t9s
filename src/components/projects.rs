@@ -2,10 +2,10 @@ use super::Component;
 use crate::teamcity::types::BuildType;
 use crate::{action::Action, config::Config};
 use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect, Size};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Row, Table, TableState, Wrap};
-use ratatui::Frame;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Default)]
@@ -35,10 +35,9 @@ impl Projects {
             ..Self::default()
         }
     }
-    
+
     fn get_build_types(&mut self) -> Vec<BuildType> {
-        self
-            .build_types
+        self.build_types
             .iter()
             .filter(|build_type| {
                 if let Some(filter_string) = &self.filter_string {
@@ -119,11 +118,14 @@ impl Projects {
 
     fn select_project(&mut self, selected_string: String) -> color_eyre::Result<()> {
         if let Some((i, _selected_type)) =
-            self.get_build_types().iter().enumerate().find(|(_, build_type)| {
-                let search_string =
-                    format!("{name} ({id})", name = build_type.name, id = build_type.id);
-                search_string == selected_string
-            })
+            self.get_build_types()
+                .iter()
+                .enumerate()
+                .find(|(_, build_type)| {
+                    let search_string =
+                        format!("{name} ({id})", name = build_type.name, id = build_type.id);
+                    search_string == selected_string
+                })
         {
             self.table_state.select(Some(i));
         }
@@ -160,9 +162,10 @@ impl ProjectsUiExt for Projects {
 
         frame.render_widget(Clear, input_area);
         frame.render_widget(input, input_area);
-        frame.set_cursor_position(
-            (input_area.x + self.input_buffer.len() as u16 + 1, input_area.y + 1)
-        );
+        frame.set_cursor_position((
+            input_area.x + self.input_buffer.len() as u16 + 1,
+            input_area.y + 1,
+        ));
     }
 }
 
@@ -187,8 +190,8 @@ impl Component for Projects {
     fn handle_key_event(&mut self, key: KeyEvent) -> color_eyre::Result<Option<Action>> {
         self.last_events.push(key);
 
-        let action= if self.input_mode == InputMode::Normal {
-             match key.code {
+        let action = if self.input_mode == InputMode::Normal {
+            match key.code {
                 KeyCode::Char('G') => {
                     self.move_end();
                     Action::Render
@@ -285,36 +288,31 @@ impl Component for Projects {
             .bottom_margin(1);
 
         let footer = if let Some(selected) = self.table_state.selected() {
-             if let Some(selected_project) = self.get_build_types().get(selected) {
-                 Some(
-                     Row::new(vec![format!(
-                         "Root project: {}",
-                         selected_project
-                             .project_name
-                             .as_deref()
-                             .unwrap_or("N/A")
-                     )])
-                         .style(
-                             Style::default()
-                                 .fg(Color::Yellow)
-                                 .add_modifier(Modifier::BOLD),
-                         )
-                         .height(1)
-                         .top_margin(1),
-                 )
-             } else {
-                 None
-             }
+            if let Some(selected_project) = self.get_build_types().get(selected) {
+                Some(
+                    Row::new(vec![format!(
+                        "Root project: {}",
+                        selected_project.project_name.as_deref().unwrap_or("N/A")
+                    )])
+                    .style(
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                    .height(1)
+                    .top_margin(1),
+                )
+            } else {
+                None
+            }
         } else {
             None
         };
 
-        let rows: Vec<Row> = self.get_build_types()
+        let rows: Vec<Row> = self
+            .get_build_types()
             .into_iter()
-            .map(|build_type| {
-                Row::new(vec![build_type.name.clone(), build_type.id.clone()])
-
-            })
+            .map(|build_type| Row::new(vec![build_type.name.clone(), build_type.id.clone()]))
             .collect();
 
         let table = Table::new(rows, &[Constraint::Min(70), Constraint::Max(30)])
