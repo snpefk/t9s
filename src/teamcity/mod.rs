@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 pub mod types;
-use types::{BuildType, BuildTypes};
+use types::{BuildType, BuildTypes, Build, Builds};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct PersistentCacheEntry<T> {
@@ -44,6 +44,7 @@ struct PersistentCache {
     entries: HashMap<String, PersistentCacheEntry<Vec<BuildType>>>,
 }
 
+#[derive(Clone)]
 pub struct TeamCityClient {
     base_url: String,
     client: reqwest::Client,
@@ -95,8 +96,6 @@ impl TeamCityClient {
                                 cleaned_cache.entries.insert(key, entry);
                             }
                         }
-                        println!("Cache contains {} entries", cleaned_cache.entries.len());
-                        println!("Cache content: {:?}", &cleaned_cache.entries);
                         cleaned_cache
                     }
                     Err(_) => PersistentCache::default(),
@@ -246,5 +245,30 @@ impl TeamCityClient {
 
         let build_type: BuildType = response.json().await?;
         Ok(build_type)
+    }
+
+    /// Fetch builds (build instances) for a given project id.
+    pub async fn get_builds_by_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<Build>, Box<dyn Error>> {
+        let url = format!(
+            "{}/app/rest/builds?locator=buildType:{},count:{}",
+            self.base_url, project_id, 100
+        );
+
+        let response = self
+            .client
+            .get(&url)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Request failed with status: {}", response.status()).into());
+        }
+
+        let builds: Builds = response.json().await?;
+        Ok(builds.build)
     }
 }
