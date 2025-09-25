@@ -130,6 +130,41 @@ impl Projects {
         Ok(())
     }
 }
+pub trait ProjectsUiExt {
+    fn render_input_popup(&self, frame: &mut Frame, area: Rect);
+}
+
+impl ProjectsUiExt for Projects {
+    fn render_input_popup(&self, frame: &mut Frame, area: Rect) {
+        let popup_width = 70;
+        let popup_height = 3;
+
+        let popup_x = area.x + ((area.width.saturating_sub(popup_width)) / 2);
+        let popup_y = area.y + ((area.height.saturating_sub(popup_height)) / 2);
+
+        let input_area = Rect {
+            x: popup_x,
+            y: popup_y,
+            width: popup_width.min(area.width),
+            height: popup_height.min(area.height),
+        };
+
+        let input = Paragraph::new(self.input_buffer.as_ref() as &str)
+            .style(Style::default().fg(Color::White).bg(Color::DarkGray))
+            .block(
+                Block::default()
+                    .title("Filter build types (press Enter to apply, Esc to cancel)")
+                    .borders(Borders::ALL),
+            )
+            .wrap(Wrap { trim: true });
+
+        frame.render_widget(Clear, input_area);
+        frame.render_widget(input, input_area);
+        frame.set_cursor_position(
+            (input_area.x + self.input_buffer.len() as u16 + 1, input_area.y + 1)
+        );
+    }
+}
 
 impl Component for Projects {
     fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> color_eyre::Result<()> {
@@ -302,33 +337,7 @@ impl Component for Projects {
         frame.render_stateful_widget(table, area, &mut self.table_state);
 
         if self.input_mode == InputMode::Editing {
-            let popup_width = 70;
-            let popup_height = 3;
-
-            let popup_x = area.x + ((area.width.saturating_sub(popup_width)) / 2);
-            let popup_y = area.y + ((area.height.saturating_sub(popup_height)) / 2);
-
-            let input_area = Rect {
-                x: popup_x,
-                y: popup_y,
-                width: popup_width.min(area.width),
-                height: popup_height.min(area.height),
-            };
-
-            let input = Paragraph::new(self.input_buffer.as_ref() as &str)
-                .style(Style::default().fg(Color::White).bg(Color::DarkGray))
-                .block(
-                    Block::default()
-                        .title("Filter build types (press Enter to apply, Esc to cancel)")
-                        .borders(Borders::ALL),
-                )
-                .wrap(Wrap { trim: true });
-
-            frame.render_widget(Clear, input_area);
-            frame.render_widget(input, input_area);
-            frame.set_cursor_position(
-                (input_area.x + self.input_buffer.len() as u16 + 1, input_area.y + 1)
-            );
+            self.render_input_popup(frame, area);
         }
         Ok(())
     }
