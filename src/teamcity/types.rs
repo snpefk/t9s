@@ -27,6 +27,18 @@ pub struct BuildTypes {
 // Build entity docs:
 // https://www.jetbrains.com/help/teamcity/rest/build.html
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct Change {
+    pub username: Option<String>,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct Changes {
+    #[serde(rename = "change")]
+    pub change: Option<Vec<Change>>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Build {
     pub id: Option<i64>,
     #[serde(rename = "buildTypeId")]
@@ -38,12 +50,17 @@ pub struct Build {
     pub href: Option<String>,
     #[serde(rename = "webUrl")]
     pub web_url: Option<String>,
+    #[serde(rename = "branchName")]
+    pub branch_name: Option<String>,
+    #[serde(rename = "statusText")]
+    pub status_text: Option<String>,
     #[serde(rename = "queuedDate")]
     pub queued_date: Option<String>,
     #[serde(rename = "startDate")]
     pub start_date: Option<String>,
     #[serde(rename = "finishDate")]
     pub finish_date: Option<String>,
+    pub changes: Option<Changes>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]

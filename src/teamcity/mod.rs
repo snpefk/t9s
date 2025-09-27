@@ -252,14 +252,20 @@ impl TeamCityClient {
         &self,
         project_id: &str,
     ) -> Result<Vec<Build>, Box<dyn Error>> {
-        let url = format!(
-            "{}/app/rest/builds?locator=buildType:{},count:{}",
-            self.base_url, project_id, 100
-        );
+        let url = format!("{}/app/rest/builds", self.base_url);
 
-        let response = self
-            .client
+        let teamcity_build_fields = "count,build(id,number,branchName,statusText,status,state,webUrl,buildTypeId,startDate,finishDate,changes(change(comment,username)))";
+        let default_build_count = "100";
+
+        let params = [
+            ("locator", format!("buildType:{}", project_id)),
+            ("count", default_build_count.to_string()),
+            ("fields", teamcity_build_fields.to_string()),
+        ];
+
+        let response = self.client
             .get(&url)
+            .query(&params)
             .header("Accept", "application/json")
             .send()
             .await?;
