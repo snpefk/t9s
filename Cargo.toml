@@ -48,6 +48,7 @@ tokio-util = "0.7.12"
 tracing = "0.1.40"
 tracing-error = "0.2.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "serde"] }
+time = { version = "0.3", features = ["parsing", "macros"] }
 
 [build-dependencies]
 anyhow = "1.0.90"
