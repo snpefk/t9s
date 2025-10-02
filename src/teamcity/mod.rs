@@ -1,12 +1,14 @@
-use std::collections::HashMap;
+use color_eyre::Result;
+use color_eyre::eyre::eyre;
 use reqwest::header::HeaderMap;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use serde::{Deserialize, Serialize};
 
 pub mod types;
-use types::{BuildType, BuildTypes, Build, Builds};
+use types::{Build, BuildType, BuildTypes, Builds};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct PersistentCacheEntry<T> {
@@ -105,7 +107,7 @@ impl TeamCityClient {
         }
     }
 
-    async fn save_cache(&self, cache: &PersistentCache) -> Result<(), Box<dyn Error>> {
+    async fn save_cache(&self, cache: &PersistentCache) -> Result<()> {
         let content = serde_json::to_string_pretty(cache)?;
 
         if let Some(parent) = self.cache_file.parent() {
@@ -116,7 +118,7 @@ impl TeamCityClient {
         Ok(())
     }
 
-    pub async fn clear_cache(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn clear_cache(&self) -> Result<()> {
         if self.cache_file.exists() {
             async_fs::remove_file(&self.cache_file).await?;
         }
@@ -158,18 +160,23 @@ impl TeamCityClient {
     pub async fn get_build_configurations_by_project(
         &self,
         project_id: &str,
-    ) -> Result<Vec<BuildType>, Box<dyn Error>> {
+    ) -> Result<Vec<BuildType>> {
         let cache_key = format!("project_{}", project_id);
         let mut cache = self.load_cache().await;
 
         if let Some(entry) = cache.entries.get(&cache_key) {
             if !entry.is_expired() {
-                println!("Using cached build configurations for project {}", project_id);
+                println!(
+                    "Using cached build configurations for project {}",
+                    project_id
+                );
                 return Ok(entry.data.clone());
             }
         }
 
-        let result = self.fetch_build_configurations_by_project(project_id).await?;
+        let result = self
+            .fetch_build_configurations_by_project(project_id)
+            .await?;
 
         cache.entries.insert(
             cache_key,
@@ -186,7 +193,7 @@ impl TeamCityClient {
     pub async fn get_build_configurations_by_projects(
         &self,
         project_ids: &Vec<String>,
-    ) -> Result<Vec<BuildType>, Box<dyn Error>> {
+    ) -> Result<Vec<BuildType>> {
         let mut all_build_types = Vec::new();
 
         for project_id in project_ids {
@@ -205,7 +212,7 @@ impl TeamCityClient {
     async fn fetch_build_configurations_by_project(
         &self,
         project_id: &str,
-    ) -> Result<Vec<BuildType>, Box<dyn Error>> {
+    ) -> Result<Vec<BuildType>> {
         let url = format!(
             "{}/app/rest/buildTypes?locator=affectedProject:(id:{})",
             self.base_url, project_id
@@ -219,17 +226,14 @@ impl TeamCityClient {
             .await?;
 
         if !response.status().is_success() {
-            return Err(format!("Request failed with status: {}", response.status()).into());
+            return Err(eyre!("Request failed with status: {}", response.status()).into());
         }
 
         let build_types: BuildTypes = response.json().await?;
         Ok(build_types.build_type)
     }
 
-    pub async fn get_build_configuration_details(
-        &self,
-        build_type_id: &str,
-    ) -> Result<BuildType, Box<dyn Error>> {
+    pub async fn get_build_configuration_details(&self, build_type_id: &str) -> Result<BuildType> {
         let url = format!("{}/app/rest/buildTypes/id:{}", self.base_url, build_type_id);
 
         let response = self
@@ -240,7 +244,7 @@ impl TeamCityClient {
             .await?;
 
         if !response.status().is_success() {
-            return Err(format!("Request failed with status: {}", response.status()).into());
+            return Err(eyre!("Request failed with status: {}", response.status()).into());
         }
 
         let build_type: BuildType = response.json().await?;
@@ -248,10 +252,7 @@ impl TeamCityClient {
     }
 
     /// Fetch builds (build instances) for a given project id.
-    pub async fn get_builds_by_project(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<Build>, Box<dyn Error>> {
+    pub async fn get_builds_by_project(&self, project_id: &str) -> Result<Vec<Build>> {
         let url = format!("{}/app/rest/builds", self.base_url);
 
         let teamcity_build_fields = "count,build(id,number,branchName,statusText,status,state,webUrl,buildTypeId,startDate,finishDate,changes(change(comment,username)))";
@@ -263,7 +264,8 @@ impl TeamCityClient {
             ("fields", teamcity_build_fields.to_string()),
         ];
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .query(&params)
             .header("Accept", "application/json")
@@ -271,7 +273,7 @@ impl TeamCityClient {
             .await?;
 
         if !response.status().is_success() {
-            return Err(format!("Request failed with status: {}", response.status()).into());
+            return Err(eyre!("Request failed with status: {}", response.status()));
         }
 
         let builds: Builds = response.json().await?;
