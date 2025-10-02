@@ -18,7 +18,6 @@ pub struct Builds {
     items: Vec<Build>,
     table_state: TableState,
     last_events: Vec<KeyEvent>,
-    pub filter_string: Option<String>,
     pub action_tx: Option<UnboundedSender<Action>>,
 }
 
@@ -27,7 +26,6 @@ impl Builds {
         Self {
             title: project_title,
             items: builds,
-            filter_string: None,
             ..Self::default()
         }
     }
