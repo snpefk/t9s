@@ -210,17 +210,19 @@ impl TeamCityClient {
         &self,
         project_id: &str,
     ) -> Result<Vec<BuildType>> {
-        let url = format!(
-            "{}/app/rest/buildTypes?locator=affectedProject:(id:{})",
-            self.base_url, project_id
-        );
+        let url = format!("{}/app/rest/buildTypes", self.base_url);
+        let fields = "count,href,buildType(id,name,type,description,projectName,projectId,href,webUrl)";
 
-        let response = self
+        let request = self
             .client
             .get(&url)
-            .header("Accept", "application/json")
-            .send()
-            .await?;
+            .query(&[
+                ("locator", format!("affectedProject:(id:{})", project_id)),
+                ("fields", fields.to_string()),
+            ])
+            .header("Accept", "application/json");
+
+        let response = request.send().await?;
 
         if !response.status().is_success() {
             return Err(eyre!("Request failed with status: {}", response.status()).into());
@@ -248,7 +250,6 @@ impl TeamCityClient {
         Ok(build_type)
     }
 
-    /// Fetch builds (build instances) for a given project id.
     pub async fn get_builds_by_project(&self, project_id: &str) -> Result<Vec<Build>> {
         let url = format!("{}/app/rest/builds", self.base_url);
 

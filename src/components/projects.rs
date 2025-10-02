@@ -30,6 +30,15 @@ impl Projects {
         }
     }
 
+    fn icon_for(&self, bt: &BuildType) -> String {
+        match bt.kind.as_deref().map(|s| s.to_ascii_lowercase()) {
+            Some(ref k) if k == "regular" => "⚙️",
+            Some(ref k) if k == "composite" => "🧩",
+            Some(ref k) if k == "deployment" => "🚀",
+            _ => "📦",
+        }.to_string()
+    }
+
     fn get_build_types(&mut self) -> Vec<BuildType> {
         self.build_types
             .iter()
@@ -336,7 +345,11 @@ impl Component for Projects {
         let rows: Vec<Row> = self
             .get_build_types()
             .into_iter()
-            .map(|build_type| Row::new(vec![build_type.name.clone(), build_type.id.clone()]))
+            .map(|build_type| {
+                let icon = self.icon_for(&build_type);
+                let name_with_icon = format!("{} {}", icon, build_type.name);
+                Row::new(vec![name_with_icon, build_type.id.clone()])
+            })
             .collect();
 
         let table = Table::new(rows, &[Constraint::Min(70), Constraint::Max(30)])

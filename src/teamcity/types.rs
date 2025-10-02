@@ -14,6 +14,8 @@ pub struct BuildType {
     pub href: Option<String>,
     #[serde(rename = "webUrl")]
     pub web_url: Option<String>,
+    #[serde(rename = "type")]
+    pub kind: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
