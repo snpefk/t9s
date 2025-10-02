@@ -3,7 +3,6 @@ use color_eyre::eyre::eyre;
 use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -89,20 +88,18 @@ impl TeamCityClient {
     async fn load_cache(&self) -> PersistentCache {
         println!("Loading cache from {}", self.cache_file.display());
         match async_fs::read_to_string(&self.cache_file).await {
-            Ok(content) => {
-                match serde_json::from_str::<PersistentCache>(&content) {
-                    Ok(cache) => {
-                        let mut cleaned_cache = PersistentCache::default();
-                        for (key, entry) in cache.entries {
-                            if !entry.is_expired() {
-                                cleaned_cache.entries.insert(key, entry);
-                            }
+            Ok(content) => match serde_json::from_str::<PersistentCache>(&content) {
+                Ok(cache) => {
+                    let mut cleaned_cache = PersistentCache::default();
+                    for (key, entry) in cache.entries {
+                        if !entry.is_expired() {
+                            cleaned_cache.entries.insert(key, entry);
                         }
-                        cleaned_cache
                     }
-                    Err(_) => PersistentCache::default(),
+                    cleaned_cache
                 }
-            }
+                Err(_) => PersistentCache::default(),
+            },
             Err(_) => PersistentCache::default(),
         }
     }
@@ -278,5 +275,36 @@ impl TeamCityClient {
 
         let builds: Builds = response.json().await?;
         Ok(builds.build)
+    }
+
+    // TODO: test if downloading and unpacking zip archive will be more efficient
+    pub async fn get_build_log_text(&self, build_id: &i64) -> Result<String> {
+        let url = format!("{}/downloadBuildLog.html", self.base_url);
+        let response = self
+            .client
+            .get(&url)
+            .query(&[
+                ("buildId", build_id.to_string()),
+                ("plain", "true".to_string()),
+            ])
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(eyre!("Request failed with status: {}", response.status()).into());
+        }
+
+        let text = response.text().await?;
+        Ok(text)
+    }
+
+    pub async fn download_build_log_to<P: AsRef<std::path::Path>>(
+        &self,
+        build_id: &i64,
+        path: P,
+    ) -> Result<()> {
+        let text = self.get_build_log_text(build_id).await?;
+        async_fs::write(path.as_ref(), text).await?;
+        Ok(())
     }
 }

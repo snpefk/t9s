@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use strum::Display;
+use std::path::PathBuf;
 
 use crate::teamcity::types::Build;
 
@@ -19,9 +20,11 @@ pub enum Action {
     // External actions
     Fzf { options: Vec<String> },
     FzfSelected { selected: String },
+    Pager { file: PathBuf },
     // Builds
     LoadBuilds { project_id: String, title: String },
     ShowBuilds { title: String, items: Vec<Build> },
+    LoadBuildLog { build_id: i64 },
     // Projects
     ShowProjects,
 }

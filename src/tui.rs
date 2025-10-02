@@ -1,9 +1,10 @@
 #![allow(dead_code)] // Remove this once you start using the code
 
-use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use color_eyre::eyre::eyre;
 use crossterm::{
-    cursor, event::{
+    cursor,
+    event::{
         DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
         Event as CrosstermEvent, EventStream, KeyEvent, KeyEventKind, MouseEvent,
     },
@@ -12,9 +13,12 @@ use crossterm::{
 use futures::{FutureExt, StreamExt};
 use ratatui::backend::CrosstermBackend as Backend;
 use serde::{Deserialize, Serialize};
+use std::env;
+use std::ffi::OsStr;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::{
-    io::{stdout, Stdout, Write},
+    io::{Stdout, Write, stdout},
     ops::{Deref, DerefMut},
     time::Duration,
 };
@@ -132,6 +136,29 @@ impl Tui {
         self.enter()?;
 
         selected_line
+    }
+
+    pub fn run_pager(&mut self, file: &PathBuf) -> Result<()> {
+        self.exit()?;
+
+        let pager = env::var("PAGER").unwrap_or("less".to_string());
+        let args = match pager.as_str() {
+            "less" => vec!["-R", file.to_str().unwrap()],
+            _ => vec![file.to_str().unwrap()],
+        };
+
+        let status = Command::new(pager).args(args).status()?;
+
+        if !status.success() {
+            return Err(eyre!(
+                "Pager failed with status code {}",
+                status.code().unwrap()
+            ));
+        }
+
+        self.terminal.clear()?;
+        self.enter()?;
+        Ok(())
     }
 
     async fn event_loop(

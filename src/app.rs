@@ -154,6 +154,11 @@ impl App {
                     self.action_tx.send(Action::FzfSelected { selected })?;
                     ()
                 }
+                Action::Pager { ref file } => {
+                    let _ = tui.run_pager(file)?;
+                    self.action_tx.send(Action::Render)?;
+                    ()
+                }
                 Action::LoadBuilds {
                     ref project_id,
                     ref title,
@@ -211,6 +216,29 @@ impl App {
                         component.init(tui.size()?)?;
                     }
                     self.render(tui)?;
+                }
+                Action::LoadBuildLog { ref build_id } => {
+                    let client = self.client.clone();
+                    let tx = self.action_tx.clone();
+
+                    let build_id = build_id.clone();
+                    let tmp_dir = std::env::temp_dir();
+                    let build_log = tmp_dir.join(format!("build_log_{}.txt", build_id));
+
+                    tokio::spawn(async move {
+                        match client.download_build_log_to(&build_id, &build_log).await {
+                            Ok(_) => {
+                                let _ = tx.send(Action::Pager { file: build_log });
+                            }
+                            Err(e) => {
+                                let error_msg = format!("Failed to download build log: {}", e);
+                                let _ = tx.send(Action::Error(error_msg));
+                            }
+                        }
+                    });
+                }
+                Action::Error(ref msg) => {
+                    // TODO: show error msg
                 }
                 _ => {}
             }

@@ -30,8 +30,8 @@ impl Builds {
         }
     }
 
-    fn get_items(&self) -> Vec<Build> {
-        self.items.clone()
+    fn get_items(&self) -> &Vec<Build> {
+        self.items.as_ref()
     }
 
     fn move_down(&mut self) {
@@ -86,6 +86,14 @@ impl Builds {
             self.table_state.select(None);
         } else {
             self.table_state.select(Some(items.len() - 1));
+        }
+    }
+
+    fn get_selected_build(&self) -> Option<&Build> {
+        if let Some(i) = self.table_state.selected() {
+            self.get_items().get(i)
+        } else {
+            None
         }
     }
 
@@ -170,6 +178,17 @@ impl Component for Builds {
                     .collect();
                 Action::Fzf { options: items }
             }
+            KeyCode::Char('l') => {
+                if let Some(selected_build) = self.get_selected_build() {
+                    if let Some(build_id) = selected_build.id {
+                        Action::LoadBuildLog { build_id }
+                    } else {
+                        Action::Error("No id was found for selected build".to_string())
+                    }
+                } else {
+                    Action::Error("No build was selected".to_string())
+                }
+            }
             KeyCode::Char('o') => {
                 self.open_selected_url();
                 Action::Render
@@ -211,8 +230,8 @@ impl Component for Builds {
             .get_items()
             .into_iter()
             .map(|build| {
-                let number = build.build_number.unwrap_or_default();
-                let branch = build.branch_name.unwrap_or_default();
+                let number = build.build_number.as_deref().unwrap_or_default();
+                let branch = build.branch_name.as_deref().unwrap_or_default();
                 let status_text = build
                     .status_text
                     .clone()
@@ -267,17 +286,17 @@ impl Component for Builds {
                 };
 
                 let mut row = Row::new(vec![
-                    number,
-                    branch,
-                    status_text.clone(),
+                    number.to_string(),
+                    branch.to_string(),
+                    status_text,
                     last_changes,
                     start_datetime,
                     duration.unwrap_or_default(),
                 ]);
 
                 // if build status is None then it's in queue state
-                let is_failed = if let Some(status) = build.status {
-                    match status.as_str() {
+                let is_failed = if let Some(status) = build.status.as_deref() {
+                    match status {
                         "FAILURE" | "UNKNOWN" => { true }
                         _ => false,
                     }
