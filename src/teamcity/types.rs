@@ -24,8 +24,6 @@ pub struct BuildTypes {
     pub build_type: Vec<BuildType>,
 }
 
-// Build entity docs:
-// https://www.jetbrains.com/help/teamcity/rest/build.html
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Change {
     pub username: Option<String>,
@@ -38,6 +36,8 @@ pub struct Changes {
     pub change: Option<Vec<Change>>,
 }
 
+// Build entity docs:
+// https://www.jetbrains.com/help/teamcity/rest/build.html
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Build {
     pub id: Option<i64>,
