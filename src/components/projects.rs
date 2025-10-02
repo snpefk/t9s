@@ -1,5 +1,6 @@
 use super::Component;
 use crate::teamcity::types::BuildType;
+use crate::utils::InputMode;
 use crate::{action::Action, config::Config};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
@@ -7,7 +8,6 @@ use ratatui::layout::{Constraint, Rect, Size};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Row, Table, TableState, Wrap};
 use tokio::sync::mpsc::UnboundedSender;
-use crate::utils::InputMode;
 
 #[derive(Default)]
 pub struct Projects {
@@ -20,7 +20,6 @@ pub struct Projects {
     pub filter_string: Option<String>,
     pub action_tx: Option<UnboundedSender<Action>>,
 }
-
 
 impl Projects {
     pub fn new(build_configs: Vec<BuildType>) -> Self {
@@ -217,7 +216,9 @@ impl Component for Projects {
                         })
                         .collect();
 
-                    Action::Fzf(build_types)
+                    Action::Fzf {
+                        options: build_types,
+                    }
                 }
                 KeyCode::Char('o') => {
                     self.open_selected_url();
@@ -282,8 +283,8 @@ impl Component for Projects {
             Action::Render => {
                 // add any logic here that should run on every render
             }
-            Action::FzfSelected(selected_string) => {
-                self.select_project(selected_string)?;
+            Action::FzfSelected { selected } => {
+                self.select_project(selected)?;
             }
             _ => {}
         }

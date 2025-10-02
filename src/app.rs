@@ -149,21 +149,24 @@ impl App {
                 Action::ClearScreen => tui.terminal.clear()?,
                 Action::Resize(w, h) => self.handle_resize(tui, w, h)?,
                 Action::Render => self.render(tui)?,
-                Action::Fzf(ref options) => {
-                    let selected_string = tui.run_fzf(&options)?;
-                    self.action_tx.send(Action::FzfSelected(selected_string))?;
+                Action::Fzf { ref options } => {
+                    let selected: String = tui.run_fzf(&options)?;
+                    self.action_tx.send(Action::FzfSelected { selected })?;
                     ()
                 }
-                Action::LoadBuilds { ref project_id, ref title } => {
+                Action::LoadBuilds {
+                    ref project_id,
+                    ref title,
+                } => {
                     self.components = vec![Box::new(Builds::new(title.clone(), vec![]))];
-                
+
                     for component in self.components.iter_mut() {
                         component.register_action_handler(self.action_tx.clone())?;
                         component.register_config_handler(self.config.clone())?;
                         component.init(tui.size()?)?;
                     }
                     self.render(tui)?;
-                
+
                     let client = self.client.clone();
                     let tx = self.action_tx.clone();
                     let title = title.clone(); // Clone title here to create an owned value for the closure
@@ -172,7 +175,10 @@ impl App {
                     tokio::spawn(async move {
                         match client.get_builds_by_project(&project_id).await {
                             Ok(items) => {
-                                let _ = tx.send(Action::ShowBuilds { title: title.clone(), items });
+                                let _ = tx.send(Action::ShowBuilds {
+                                    title: title.clone(),
+                                    items,
+                                });
                             }
                             Err(e) => {
                                 let error_msg = format!(
@@ -184,7 +190,10 @@ impl App {
                         }
                     });
                 }
-                Action::ShowBuilds { ref title, ref items } => {
+                Action::ShowBuilds {
+                    ref title,
+                    ref items,
+                } => {
                     self.components = vec![Box::new(Builds::new(title.clone(), items.clone()))];
 
                     for component in self.components.iter_mut() {
@@ -205,7 +214,7 @@ impl App {
                 }
                 _ => {}
             }
-            
+
             for component in self.components.iter_mut() {
                 if let Some(action) = component.update(action.clone())? {
                     self.action_tx.send(action)?

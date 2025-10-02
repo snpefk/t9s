@@ -168,7 +168,7 @@ impl Component for Builds {
                         )
                     })
                     .collect();
-                Action::Fzf(items)
+                Action::Fzf { options: items }
             }
             KeyCode::Char('o') => {
                 self.open_selected_url();
@@ -182,8 +182,8 @@ impl Component for Builds {
 
     fn update(&mut self, action: Action) -> color_eyre::Result<Option<Action>> {
         match action {
-            Action::FzfSelected(selected_string) => {
-                self.select_build(selected_string);
+            Action::FzfSelected { selected } => {
+                self.select_build(selected);
             }
             _ => {}
         }

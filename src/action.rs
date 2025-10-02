@@ -17,8 +17,8 @@ pub enum Action {
     Error(String),
     Help,
     // External actions
-    Fzf(Vec<String>),
-    FzfSelected(String),
+    Fzf { options: Vec<String> },
+    FzfSelected { selected: String },
     // Builds
     LoadBuilds { project_id: String, title: String },
     ShowBuilds { title: String, items: Vec<Build> },
