@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{debug, info};
 
+use crate::components::builds::Builds;
 use crate::components::projects::Projects;
-use crate::teamcity::types::{BuildType, BuildTypes};
+use crate::teamcity::TeamCityClient;
+use crate::teamcity::types::{Build, BuildType};
 use crate::{
     action::Action,
     components::{Component, fps::FpsCounter, home::Home},
@@ -23,6 +25,8 @@ pub struct App {
     last_tick_key_events: Vec<KeyEvent>,
     action_tx: mpsc::UnboundedSender<Action>,
     action_rx: mpsc::UnboundedReceiver<Action>,
+    client: TeamCityClient,
+    build_types: Vec<BuildType>,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -32,10 +36,10 @@ pub enum Mode {
 }
 
 impl App {
-    pub fn new(build_types: Vec<BuildType>) -> Result<Self> {
+    pub fn new(client: TeamCityClient, build_types: Vec<BuildType>) -> Result<Self> {
         let (action_tx, action_rx) = mpsc::unbounded_channel();
         Ok(Self {
-            components: vec![Box::new(Projects::new(build_types))],
+            components: vec![Box::new(Projects::new(build_types.clone()))],
             should_quit: false,
             should_suspend: false,
             config: Config::new()?,
@@ -43,6 +47,8 @@ impl App {
             last_tick_key_events: Vec::new(),
             action_tx,
             action_rx,
+            client,
+            build_types: build_types.clone(),
         })
     }
 
@@ -148,8 +154,58 @@ impl App {
                     self.action_tx.send(Action::FzfSelected(selected_string))?;
                     ()
                 }
+                Action::LoadBuilds { ref project_id, ref title } => {
+                    self.components = vec![Box::new(Builds::new(title.clone(), vec![]))];
+                
+                    for component in self.components.iter_mut() {
+                        component.register_action_handler(self.action_tx.clone())?;
+                        component.register_config_handler(self.config.clone())?;
+                        component.init(tui.size()?)?;
+                    }
+                    self.render(tui)?;
+                
+                    let client = self.client.clone();
+                    let tx = self.action_tx.clone();
+                    let title = title.clone(); // Clone title here to create an owned value for the closure
+                    let project_id = project_id.clone();
+
+                    tokio::spawn(async move {
+                        match client.get_builds_by_project(&project_id).await {
+                            Ok(items) => {
+                                let _ = tx.send(Action::ShowBuilds { title: title.clone(), items });
+                            }
+                            Err(e) => {
+                                let error_msg = format!(
+                                    "Failed to fetch builds for project {}: {}",
+                                    project_id, e
+                                );
+                                let _ = tx.send(Action::Error(error_msg));
+                            }
+                        }
+                    });
+                }
+                Action::ShowBuilds { ref title, ref items } => {
+                    self.components = vec![Box::new(Builds::new(title.clone(), items.clone()))];
+
+                    for component in self.components.iter_mut() {
+                        component.register_action_handler(self.action_tx.clone())?;
+                        component.register_config_handler(self.config.clone())?;
+                        component.init(tui.size()?)?;
+                    }
+                    self.render(tui)?;
+                }
+                Action::ShowProjects => {
+                    self.components = vec![Box::new(Projects::new(self.build_types.clone()))];
+                    for component in self.components.iter_mut() {
+                        component.register_action_handler(self.action_tx.clone())?;
+                        component.register_config_handler(self.config.clone())?;
+                        component.init(tui.size()?)?;
+                    }
+                    self.render(tui)?;
+                }
                 _ => {}
             }
+            
             for component in self.components.iter_mut() {
                 if let Some(action) = component.update(action.clone())? {
                     self.action_tx.send(action)?

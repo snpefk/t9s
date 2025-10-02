@@ -7,6 +7,7 @@ use ratatui::layout::{Constraint, Rect, Size};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Row, Table, TableState, Wrap};
 use tokio::sync::mpsc::UnboundedSender;
+use crate::utils::InputMode;
 
 #[derive(Default)]
 pub struct Projects {
@@ -20,12 +21,6 @@ pub struct Projects {
     pub action_tx: Option<UnboundedSender<Action>>,
 }
 
-#[derive(Default, PartialEq, Clone, Debug)]
-enum InputMode {
-    #[default]
-    Normal,
-    Editing,
-}
 
 impl Projects {
     pub fn new(build_configs: Vec<BuildType>) -> Self {
@@ -227,6 +222,20 @@ impl Component for Projects {
                 KeyCode::Char('o') => {
                     self.open_selected_url();
                     Action::Render
+                }
+                KeyCode::Enter => {
+                    if let Some(selected_index) = self.table_state.selected() {
+                        if let Some(build_type) = self.get_build_types().get(selected_index) {
+                            Action::LoadBuilds {
+                                project_id: build_type.id.clone(),
+                                title: build_type.name.clone(),
+                            }
+                        } else {
+                            Action::Render
+                        }
+                    } else {
+                        Action::Render
+                    }
                 }
                 KeyCode::Char('/') => {
                     self.input_mode = InputMode::Editing;

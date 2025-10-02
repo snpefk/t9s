@@ -17,6 +17,8 @@ mod errors;
 mod logging;
 mod tui;
 mod teamcity;
+mod utils;
+mod time;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -41,7 +43,7 @@ async fn main() -> Result<()> {
     println!("Fetching build configurations from TeamCity...");
     let build_types = client.get_build_configurations_by_projects(&projects).await.unwrap();
 
-    let mut app = App::new(build_types)?;
+    let mut app = App::new(client, build_types)?;
     app.run().await?;
     Ok(())
 }
