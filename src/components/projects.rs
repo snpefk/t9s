@@ -3,10 +3,12 @@ use crate::teamcity::types::BuildType;
 use crate::utils::InputMode;
 use crate::{action::Action, config::Config};
 use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::Frame;
-use ratatui::layout::{Constraint, Rect, Size};
+use ratatui::layout::{Constraint, Direction, Layout, Rect, Size};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Row, Table, TableState, Wrap};
+use ratatui::widgets::{
+    Block, Borders, Clear, Padding, Paragraph, Row, Table, TableState, Wrap,
+};
+use ratatui::Frame;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Default)]
@@ -301,14 +303,22 @@ impl Component for Projects {
     }
 
     fn draw(&mut self, frame: &mut Frame, area: Rect) -> color_eyre::Result<()> {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                // Constraint::Length(3), // Header height
+                Constraint::Min(0),    // Table takes remaining space
+                Constraint::Length(2), // Footer height
+            ])
+            .split(area);
+
         let header = Row::new(vec![
             format!(
                 "Name {}",
-                if let Some(filter_string) = self.filter_string.as_ref() {
-                    format!("({})", filter_string)
-                } else {
-                    String::from("")
-                }
+                self.filter_string
+                    .as_deref()
+                    .map(|s| format!("({})", s))
+                    .unwrap_or_default()
             ),
             "ID".to_string(),
         ])
@@ -320,27 +330,34 @@ impl Component for Projects {
         .height(1)
         .bottom_margin(1);
 
-        let footer = if let Some(selected) = self.table_state.selected() {
+        let project = if let Some(selected) = self.table_state.selected() {
             if let Some(selected_project) = self.get_build_types().get(selected) {
-                Some(
-                    Row::new(vec![format!(
-                        "Root project: {}",
-                        selected_project.project_name.as_deref().unwrap_or("N/A")
-                    )])
-                    .style(
-                        Style::default()
-                            .fg(Color::Yellow)
-                            .add_modifier(Modifier::BOLD),
-                    )
-                    .height(1)
-                    .top_margin(1),
-                )
+                let title = format!(
+                    "Root project: {}",
+                    selected_project.project_name.as_deref().unwrap_or("N/A")
+                );
+                let style = Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD);
+
+                let row = Row::new(vec![title]).style(style).height(1).top_margin(1);
+                Some(row)
             } else {
                 None
             }
         } else {
             None
         };
+
+        let footer = Paragraph::new(
+            concat!(
+            "j/k: Move  gg/G: Top/Bottom  Enter: Open builds  f: Fuzzy  /: Filter  o: Open in Browser",
+            " ⏺︎ ",
+            "Build Configuration type: Regular ⚙️, Composite 🧩, Deployment 🚀",
+            )
+        )
+        .style(Style::default().fg(Color::DarkGray))
+            .block(Block::default().padding(Padding::horizontal(1)));
 
         let rows: Vec<Row> = self
             .get_build_types()
@@ -352,8 +369,9 @@ impl Component for Projects {
             })
             .collect();
 
-        let table = Table::new(rows, &[Constraint::Min(70), Constraint::Max(30)])
+        let table = Table::new(rows, &[Constraint::Min(0), Constraint::Min(30)])
             .header(header)
+            .footer(project.unwrap_or_else(|| Row::new(vec!["No project selected"])))
             .block(
                 Block::default()
                     .borders(Borders::ALL)
@@ -363,17 +381,13 @@ impl Component for Projects {
             .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
             .highlight_symbol(">> ");
 
-        let table = if let Some(footer) = footer {
-            table.footer(footer)
-        } else {
-            table
-        };
-
-        frame.render_stateful_widget(table, area, &mut self.table_state);
+        frame.render_stateful_widget(table, chunks[0], &mut self.table_state);
+        frame.render_widget(footer, chunks[1]);
 
         if self.input_mode == InputMode::Editing {
             self.render_input_popup(frame, area);
         }
+
         Ok(())
     }
 }

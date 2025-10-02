@@ -7,9 +7,9 @@ use crate::{action::Action, config::Config};
 use color_eyre::eyre::anyhow;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Rect, Size};
+use ratatui::layout::{Constraint, Direction, Layout, Rect, Size};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::widgets::{Block, Borders, Row, Table, TableState};
+use ratatui::widgets::{Block, Borders, Row, Table, TableState, Paragraph, Clear, Padding};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Default)]
@@ -210,6 +210,15 @@ impl Component for Builds {
     }
 
     fn draw(&mut self, frame: &mut Frame, area: Rect) -> color_eyre::Result<()> {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                // Constraint::Length(3), // Header height
+                Constraint::Min(0),    // Table takes remaining space
+                Constraint::Length(2), // Footer height
+            ])
+            .split(area);
+
         let header = Row::new(vec![
             "Number",
             "Branch",
@@ -332,8 +341,15 @@ impl Component for Builds {
         .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">> ");
 
-        frame.render_stateful_widget(table, area, &mut self.table_state);
+        frame.render_stateful_widget(table, chunks[0], &mut self.table_state);
 
+        let footer = Paragraph::new(
+            "j/k: Move  gg/G: Top/Bottom  f: Fuzzy  l: Log  o: Open URL  h/Esc: Back"
+        )
+            .style(Style::default().fg(Color::DarkGray))
+            .block(Block::default().padding(Padding::horizontal(1)));
+
+        frame.render_widget(footer, chunks[1]);
         Ok(())
     }
 }
