@@ -45,8 +45,6 @@ async fn main() -> Result<()> {
         }
     }
 
-    println!("Using configuration: {:?}", args);
-
     let teamcity_url = args.teamcity_url.expect("Something went wrong and teamcity_url parameter wasn't set");
     let token = args.token.expect("Somethings went wrong and token parameter wasn't set");
     let projects = args.projects.unwrap_or_default();
