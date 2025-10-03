@@ -3,12 +3,10 @@ use crate::teamcity::types::BuildType;
 use crate::utils::InputMode;
 use crate::{action::Action, config::Config};
 use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect, Size};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::widgets::{
-    Block, Borders, Clear, Padding, Paragraph, Row, Table, TableState, Wrap,
-};
-use ratatui::Frame;
+use ratatui::widgets::{Block, Borders, Clear, Padding, Paragraph, Row, Table, TableState, Wrap};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Default)]
@@ -38,7 +36,8 @@ impl Projects {
             Some(ref k) if k == "composite" => "🧩",
             Some(ref k) if k == "deployment" => "🚀",
             _ => "📦",
-        }.to_string()
+        }
+        .to_string()
     }
 
     fn get_build_types(&mut self) -> Vec<BuildType> {
@@ -96,28 +95,36 @@ impl Projects {
         self.table_state.select(Some(i));
     }
 
-    fn open_selected_url(&mut self) {
+    fn open_selected_build(&mut self) {
         if let Some(selected_index) = self.table_state.selected() {
-            if let Some(config) = self.get_build_types().get(selected_index) {
-                if let Some(web_url) = &config.web_url {
-                    match open::that(web_url) {
-                        Ok(_) => {
-                            // self.message = AppMessage::Success(
-                            //     format!("Opened {} in browser", config.name)
-                            // );
-                        }
-                        Err(e) => {
-                            // self.message = AppMessage::Error(
-                            //     format!("Failed to open URL: {}", e)
-                            // );
-                        }
-                    }
-                } else {
-                    // self.message = AppMessage::Error(
-                    //     "No web URL available for this build configuration".to_string()
-                    // );
+            if let Some(build_type) = self.get_build_types().get(selected_index) {
+                if let Some(web_url) = &build_type.web_url {
+                    let _ = open::that(web_url);
                 }
             }
+        }
+    }
+
+    fn edit_selected_build(&mut self) {
+        let build_types = self.get_build_types();
+
+        let web_setting_link = self
+            .table_state
+            .selected()
+            .and_then(|selected_index| build_types.get(selected_index))
+            .and_then(|build_type| build_type.links.as_ref())
+            .and_then(|links| {
+                links
+                    .links
+                    .iter().find(|link| link.kind == "webViewSettings")
+                    // .as_ref()
+                    // .and_then(|links|
+                    //     links.iter().find(|link| link.kind == "webViewSettings")
+                    // )
+            });
+
+        if let Some(link) = web_setting_link {
+            let _ = open::that(&link.url);
         }
     }
 
@@ -232,7 +239,11 @@ impl Component for Projects {
                     }
                 }
                 KeyCode::Char('o') => {
-                    self.open_selected_url();
+                    self.open_selected_build();
+                    Action::Render
+                }
+                KeyCode::Char('e') => {
+                    self.edit_selected_build();
                     Action::Render
                 }
                 KeyCode::Enter => {
@@ -351,8 +362,8 @@ impl Component for Projects {
 
         let footer = Paragraph::new(
             concat!(
-            "j/k: Move  gg/G: Top/Bottom  Enter: Open builds  f: Fuzzy  /: Filter  o: Open in Browser",
-            " ⏺︎ ",
+            "j/k: Move  gg/G: Top/Bottom  Enter: Open builds  f: Fuzzy  /: Filter  o: Open in Browser  e: Edit in Browser ",
+            "\n",
             "Build Configuration type: Regular ⚙️, Composite 🧩, Deployment 🚀",
             )
         )

@@ -14,8 +14,25 @@ pub struct BuildType {
     pub href: Option<String>,
     #[serde(rename = "webUrl")]
     pub web_url: Option<String>,
+    pub links: Option<Links>,
     #[serde(rename = "type")]
     pub kind: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct Links {
+    pub count: u32,
+    #[serde(rename = "link")]
+    pub links: Vec<Link>
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct Link {
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub url: String,
+    #[serde(rename = "relativeUrl")]
+    pub relative_url: String,
 }
 
 #[derive(Debug, Deserialize)]

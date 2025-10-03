@@ -197,7 +197,7 @@ impl TeamCityClient {
         project_id: &str,
     ) -> Result<Vec<BuildType>> {
         let url = format!("{}/app/rest/buildTypes", self.base_url);
-        let fields = "count,href,buildType(id,name,type,description,projectName,projectId,href,webUrl)";
+        let fields = "count,href,buildType(id,name,type,description,projectName,projectId,href,links,webUrl)";
 
         let request = self
             .client
