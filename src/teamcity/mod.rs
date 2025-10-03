@@ -136,24 +136,6 @@ impl TeamCityClient {
         (total_entries, cache_size)
     }
 
-    // pub async fn get_build_configurations(&self) -> Result<Vec<BuildType>, Box<dyn Error>> {
-    //     let url = format!("{}/app/rest/buildTypes", self.base_url);
-    //
-    //     let response = self
-    //         .client
-    //         .get(&url)
-    //         .header("Accept", "application/json")
-    //         .send()
-    //         .await?;
-    //
-    //     if !response.status().is_success() {
-    //         return Err(format!("Request failed with status: {}", response.status()).into());
-    //     }
-    //
-    //     let build_types: BuildTypes = response.json().await?;
-    //     Ok(build_types.build_type)
-    // }
-
     pub async fn get_build_configurations_by_project(
         &self,
         project_id: &str,
@@ -191,6 +173,10 @@ impl TeamCityClient {
         &self,
         project_ids: &Vec<String>,
     ) -> Result<Vec<BuildType>> {
+        if project_ids.is_empty() {
+            return Err(eyre!("You need to specify at least one project ID"));
+        }
+
         let mut all_build_types = Vec::new();
 
         for project_id in project_ids {
