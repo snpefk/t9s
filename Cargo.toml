@@ -5,6 +5,7 @@ edition = "2024"
 description = "tui for teamcity"
 authors = ["snpefk <snpefk@gmail.com>"]
 build = "build.rs"
+repository = "https://github.com/snpefk/t9s"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -56,3 +57,8 @@ rpassword = "7.4.0"
 [build-dependencies]
 anyhow = "1.0.90"
 vergen-gix = { version = "1.0.2", features = ["build", "cargo"] }
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
