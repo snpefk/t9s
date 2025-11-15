@@ -2,6 +2,8 @@
 
 A terminal user interface (TUI) for browsing TeamCity build configurations.
 
+![Screenshot](.assets/screenshot.png)
+
 ## Features
 
 - TeamCity integration: browse projects and build configurations from your server
