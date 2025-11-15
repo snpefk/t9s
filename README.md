@@ -14,6 +14,22 @@ A terminal user interface (TUI) for browsing TeamCity build configurations.
 
 ## Getting started
 
+Check out the [releases page](https://github.com/snpefk/t9s/releases) for prebuilt binaries.
+
+### Install prebuilt binaries via shell script
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/snpefk/t9s/releases/download/v0.1.0/t9s-installer.sh | sh
+```
+
+### Install prebuilt binaries via Homebrew
+
+```sh
+brew install snpefk/t9s/t9s
+```
+
+### Build from source
+
 Prerequisites:
 
 - Rust and Cargo installed
