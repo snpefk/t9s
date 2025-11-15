@@ -6,6 +6,7 @@ description = "tui for teamcity"
 authors = ["snpefk <snpefk@gmail.com>"]
 build = "build.rs"
 repository = "https://github.com/snpefk/t9s"
+homepage = "https://github.com/snpefk/t9s"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
